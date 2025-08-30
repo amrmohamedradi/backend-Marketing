@@ -1,8 +1,7 @@
-import express from 'express';
-import { Request, Response, NextFunction } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = parseInt(process.env.PORT || '5000', 10);
 
 // Parse JSON bodies
 app.use(express.json());
@@ -18,7 +17,7 @@ const corsMiddleware = (req: Request, res: Response, next: NextFunction) => {
   res.header('Access-Control-Allow-Credentials', 'true');
   res.header('Vary', 'Origin');
 
-  // Handle preflight OPTIONS requests
+  // Handle preflight OPTIONS requests (204)
   if (req.method === 'OPTIONS') {
     return res.status(204).end();
   }
@@ -29,7 +28,7 @@ const corsMiddleware = (req: Request, res: Response, next: NextFunction) => {
 // Apply CORS to all routes
 app.use(corsMiddleware);
 
-// Example route: POST /api/specs/:id
+// POST /api/specs/:id - Main endpoint
 app.post('/api/specs/:id', (req: Request, res: Response) => {
   const { id } = req.params;
   const payload = req.body;
@@ -41,11 +40,12 @@ app.post('/api/specs/:id', (req: Request, res: Response) => {
     success: true,
     id,
     message: 'Spec updated successfully',
-    data: payload
+    data: payload,
+    timestamp: new Date().toISOString()
   });
 });
 
-// Example route: GET /api/specs/:id
+// GET /api/specs/:id
 app.get('/api/specs/:id', (req: Request, res: Response) => {
   const { id } = req.params;
   
@@ -61,7 +61,11 @@ app.get('/api/specs/:id', (req: Request, res: Response) => {
 
 // Health check
 app.get('/health', (req: Request, res: Response) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    version: '1.0.0'
+  });
 });
 
 // 404 handler with CORS headers
@@ -74,7 +78,12 @@ app.use((req: Request, res: Response) => {
   
   res.status(404).json({
     success: false,
-    message: 'Route not found'
+    message: `Route not found: ${req.method} ${req.path}`,
+    availableRoutes: [
+      'POST /api/specs/:id',
+      'GET /api/specs/:id',
+      'GET /health'
+    ]
   });
 });
 
@@ -96,7 +105,9 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 
 // Listen on 0.0.0.0 for Railway
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on 0.0.0.0:${PORT}`);
+  console.log(`🚀 Server running on 0.0.0.0:${PORT}`);
+  console.log(`📡 CORS enabled for: ${FRONTEND_ORIGIN}`);
+  console.log(`🔗 Health check: http://0.0.0.0:${PORT}/health`);
 });
 
 export default app;
