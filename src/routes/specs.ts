@@ -2,7 +2,7 @@ import express, { Request, Response } from 'express';
 import { specSchema, SpecInput } from '../validation/spec';
 import { generateSlug } from '../utils/slug';
 import { upsertSpec, getSpecBySlug } from '../lib/upsert';
-import { normalizeServices } from '../lib/normalizeServices.js';
+import { normalizeServices } from '../lib/normalizeServices';
 
 const router = express.Router();
 
@@ -12,10 +12,18 @@ router.post('/api/specs/:slug', async (req: Request, res: Response) => {
     const { slug } = req.params;
     const specData = req.body;
     
-    if (!specData) {
+    // Validate slug parameter
+    if (!slug || typeof slug !== 'string' || slug.trim().length === 0) {
       return res.status(400).json({ 
         ok: false, 
-        message: 'Empty JSON body' 
+        message: 'Invalid or missing slug parameter' 
+      });
+    }
+    
+    if (!specData || Object.keys(specData).length === 0) {
+      return res.status(400).json({ 
+        ok: false, 
+        message: 'Empty or invalid JSON body' 
       });
     }
     
@@ -30,7 +38,14 @@ router.post('/api/specs/:slug', async (req: Request, res: Response) => {
     
     // Normalize services data before saving
     if (specData.services) {
-      specData.services = normalizeServices(specData.services);
+      try {
+        specData.services = normalizeServices(specData.services);
+      } catch (error) {
+        return res.status(400).json({ 
+          ok: false, 
+          message: 'Invalid services data format' 
+        });
+      }
     }
     
     // If preserving support, remove it from incoming data so upsert preserves existing
@@ -40,6 +55,13 @@ router.post('/api/specs/:slug', async (req: Request, res: Response) => {
     
     // Upsert the spec using helper
     const spec = await upsertSpec(slug, specData);
+    
+    if (!spec) {
+      return res.status(500).json({ 
+        ok: false, 
+        message: 'Failed to save spec to database' 
+      });
+    }
     
     // Return success with slug and id
     return res.status(200).json({ 
@@ -104,10 +126,19 @@ router.get('/api/specs/:slug', async (req: Request, res: Response) => {
   try {
     const { slug } = req.params;
     
+    // Validate slug parameter
+    if (!slug || typeof slug !== 'string' || slug.trim().length === 0) {
+      return res.status(400).json({ 
+        ok: false, 
+        message: 'Invalid or missing slug parameter' 
+      });
+    }
+    
     // Set cache headers for no-store to ensure fresh data
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.set('Pragma', 'no-cache');
     res.set('Expires', '0');
+    res.set('Content-Type', 'application/json');
     
     // Get spec using helper
     const spec = await getSpecBySlug(slug);
@@ -116,6 +147,13 @@ router.get('/api/specs/:slug', async (req: Request, res: Response) => {
       return res.status(404).json({ 
         ok: false, 
         message: 'Spec not found' 
+      });
+    }
+    
+    if (!spec.data) {
+      return res.status(500).json({ 
+        ok: false, 
+        message: 'Spec data is corrupted' 
       });
     }
     
