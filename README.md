@@ -1,6 +1,6 @@
-# Service Spec Maker Backend
+# Marketing Corner Backend
 
-This is the backend for the Service Spec Maker application. It's built with Node.js, Express, TypeScript, and MongoDB.
+This is the backend for the Marketing Corner application. It's built with Node.js, Express, TypeScript, and MongoDB.
 
 ## Features
 

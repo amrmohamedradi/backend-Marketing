@@ -11,7 +11,7 @@ dotenv.config();
 
 // Create Express app
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = parseInt(process.env.PORT || '5000', 10);
 
 // Connect to MongoDB with error handling
 connectDB().catch(err => {
@@ -23,25 +23,28 @@ connectDB().catch(err => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// CORS configuration
-const allowedOrigins = [
-  'http://localhost:8080',
-  'http://localhost:8081',
-  'http://localhost:5173',
-  'http://127.0.0.1:8080',
-  'http://127.0.0.1:8081',
-  'http://127.0.0.1:5173'
-];
-if (process.env.FRONTEND_URL) {
-  allowedOrigins.push(process.env.FRONTEND_URL);
-}
+// CORS configuration - Production frontend origin
+const FRONTEND_ORIGIN = 'https://marketing-mauve-ten.vercel.app';
 
-app.use(cors({
-  origin: allowedOrigins,
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control', 'Pragma', 'Expires']
-}));
+// Custom CORS middleware to ensure consistent headers
+const corsMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  // Set CORS headers for the production frontend
+  res.header('Access-Control-Allow-Origin', FRONTEND_ORIGIN);
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Vary', 'Origin');
+
+  // Handle preflight OPTIONS requests
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  next();
+};
+
+// Apply CORS middleware to all routes
+app.use(corsMiddleware);
 
 // Set up EJS as the view engine
 app.set('view engine', 'ejs');
@@ -51,18 +54,41 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(specsRoutes);
 app.use(healthRoutes);
 
-// Error handling middleware
+// 404 handler with CORS headers
+app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+  // Ensure CORS headers are set on 404 responses
+  res.header('Access-Control-Allow-Origin', FRONTEND_ORIGIN);
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Vary', 'Origin');
+  
+  res.status(404).json({ 
+    ok: false, 
+    message: 'Route not found' 
+  });
+});
+
+// Error handling middleware with CORS headers
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error(err.stack);
+  
+  // Ensure CORS headers are set on error responses
+  res.header('Access-Control-Allow-Origin', FRONTEND_ORIGIN);
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Vary', 'Origin');
+  
   res.status(500).json({ 
     ok: false, 
     message: err.message || 'Internal Server Error' 
   });
 });
 
-// Start the server
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+// Start the server on 0.0.0.0 for Railway
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on 0.0.0.0:${PORT}`);
   console.log(`Base URL: ${process.env.BASE_URL || `http://localhost:${PORT}`}`);
 });
 
