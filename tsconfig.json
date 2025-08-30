@@ -8,7 +8,7 @@
     "outDir": "./dist",
     "rootDir": "./src",
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": trueو
+    "forceConsistentCasingInFileNames": true,
     "allowJs": true
   },
   "include": ["src/**/*"],
