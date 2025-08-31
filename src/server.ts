@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import specsRouter from "./routes/specs.js"; // IMPORTANT: .js with NodeNext
+import translateRouter from "./routes/translate.js"; // IMPORTANT: .js with NodeNext
 
 const app = express();
 
@@ -31,8 +32,9 @@ app.use("/api", (req, _res, next) => {
 
 app.get("/health", (_req, res) => res.status(200).send("ok"));
 
-// ✅ Mount router here
+// ✅ Mount routers here
 app.use("/api/specs", specsRouter);
+app.use("/api", translateRouter);
 
 // Return useful 404 for unknown API routes
 app.use("/api/*", (req, res) => {

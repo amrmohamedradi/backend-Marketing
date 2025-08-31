@@ -14,50 +14,48 @@ const db_1 = require("./lib/db");
 dotenv_1.default.config();
 // Create Express app
 const app = (0, express_1.default)();
-const PORT = process.env.PORT || 5000;
+const PORT = Number(process.env.PORT) || 8080;
 // Connect to MongoDB with error handling
 (0, db_1.connectDB)().catch(err => {
     console.error('Failed to connect to MongoDB:', err);
     console.log('Server will continue with mock storage');
 });
-// Middleware
-app.use(express_1.default.json());
-app.use(express_1.default.urlencoded({ extended: true }));
-// CORS configuration
-const allowedOrigins = [
-    'http://localhost:8080',
-    'http://localhost:8081',
-    'http://localhost:5173',
-    'http://127.0.0.1:8080',
-    'http://127.0.0.1:8081',
-    'http://127.0.0.1:5173'
+const ALLOWED_ORIGINS = [
+    "https://marketing-mauve-ten.vercel.app",
+    "http://localhost:3000",
+    "http://localhost:5173",
 ];
-if (process.env.FRONTEND_URL) {
-    allowedOrigins.push(process.env.FRONTEND_URL);
-}
 app.use((0, cors_1.default)({
-    origin: allowedOrigins,
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control', 'Pragma', 'Expires']
+    origin: (origin, cb) => {
+        // allow curl/server-to-server with no Origin, and allow listed origins
+        if (!origin || ALLOWED_ORIGINS.includes(origin))
+            return cb(null, true);
+        return cb(new Error("Not allowed by CORS"));
+    },
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    // REMOVE allowedHeaders so cors echoes Access-Control-Request-Headers automatically
+    credentials: false, // set to true only if you send cookies
 }));
+// Preflight for all routes
+app.options("*", (0, cors_1.default)());
+app.use(express_1.default.json({ limit: "2mb" }));
+app.use(express_1.default.urlencoded({ extended: true }));
+// Health AFTER cors so it gets CORS headers
+app.get("/health", (_req, res) => res.status(200).send("ok"));
 // Set up EJS as the view engine
 app.set('view engine', 'ejs');
 app.set('views', path_1.default.join(__dirname, 'views'));
-// Routes
-app.use(specs_1.default);
+// Mount API routes under /api
+app.use("/api/specs", specs_1.default);
 app.use(health_1.default);
-// Error handling middleware
-app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).json({
-        ok: false,
-        message: err.message || 'Internal Server Error'
-    });
+// 404 handler for API routes
+app.use("/api/*", (_req, res) => res.status(404).json({ message: "Not Found" }));
+// Centralized error handler
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+app.use((err, _req, res, _next) => {
+    const code = Number(err?.status || err?.statusCode || 500);
+    res.status(code).json({ message: err?.message || "Server error" });
 });
-// Start the server
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-    console.log(`Base URL: ${process.env.BASE_URL || `http://localhost:${PORT}`}`);
-});
+// Start the server on 0.0.0.0 for Railway
+app.listen(PORT, "0.0.0.0", () => console.log(`Listening on ${PORT}`));
 exports.default = app;
