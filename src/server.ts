@@ -19,24 +19,30 @@ connectDB().catch(err => {
   console.log('Server will continue with mock storage');
 });
 
-// CORS configuration with multiple origins
+const ALLOWED_ORIGINS = [
+  "https://marketing-mauve-ten.vercel.app",
+  "http://localhost:3000",
+  "http://localhost:5173",
+];
+
 app.use(cors({
-  origin: [
-    "http://localhost:3000",
-    "http://localhost:5173", 
-    "https://marketing-mauve-ten.vercel.app",
-    "https://your-frontend-domain.com"
-  ],
-  credentials: false,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  origin: (origin, cb) => {
+    // allow curl/server-to-server with no Origin, and allow listed origins
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
+    return cb(new Error("Not allowed by CORS"));
+  },
+  methods: ["GET","POST","PUT","PATCH","DELETE","OPTIONS"],
+  allowedHeaders: ["Content-Type","Authorization"],
+  credentials: false, // set to true only if you send cookies
 }));
 
-// Body parsing middleware
+// Preflight for all routes
+app.options("*", cors());
+
 app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true }));
 
-// Health endpoint
+// Health AFTER cors so it gets CORS headers
 app.get("/health", (_req, res) => res.status(200).send("ok"));
 
 // Set up EJS as the view engine
