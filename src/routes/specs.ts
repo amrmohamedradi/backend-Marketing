@@ -8,36 +8,56 @@ let seq = 1;
 
 // Create with auto id
 r.post("/", (req, res) => {
-  const services = normalizeServices((req.body ?? {}).services ?? []);
+  console.log(`[API] POST /api/specs - Received payload:`, JSON.stringify(req.body, null, 2));
+  
   const id = String(seq++);
-  const row = { id, services };
+  // Store the complete payload, not just services
+  const row = { id, ...req.body }; // Store the entire request body
   DB.set(id, row);
-  res.status(201).json({ id, link: `/api/specs/${id}`, services });
+  
+  console.log(`[API] POST /api/specs - Created with ID ${id}:`, JSON.stringify(row, null, 2));
+  res.status(201).json({ id, link: `/api/specs/${id}`, ...req.body });
 });
 
 // ✅ UPSERT: create if missing, update if exists
 r.put("/:id", (req, res) => {
   const id = String(req.params.id);
-  const services = normalizeServices((req.body ?? {}).services ?? []);
+  console.log(`[API] PUT /api/specs/${id} - Received payload:`, JSON.stringify(req.body, null, 2));
+  
+  // Store the complete payload, not just services
   const existed = DB.has(id);
-  const row = { id, services };
+  const row = { id, ...req.body }; // Store the entire request body
   DB.set(id, row);
-  res.status(existed ? 200 : 201).json({ id, link: `/api/specs/${id}`, services });
+  
+  console.log(`[API] PUT /api/specs/${id} - Stored data:`, JSON.stringify(row, null, 2));
+  res.status(existed ? 200 : 201).json({ id, link: `/api/specs/${id}`, ...req.body });
 });
 
 // (compat) allow POST /:id if FE still uses it
 r.post("/:id", (req, res) => {
   const id = String(req.params.id);
   if (DB.has(id)) return res.status(409).json({ message: "ID already exists" });
-  const services = normalizeServices((req.body ?? {}).services ?? []);
-  const row = { id, services };
+  console.log(`[API] POST /api/specs/${id} - Received payload:`, JSON.stringify(req.body, null, 2));
+  
+  // Store the complete payload, not just services
+  const row = { id, ...req.body }; // Store the entire request body
   DB.set(id, row);
-  res.status(201).json({ id, link: `/api/specs/${id}`, services });
+  
+  console.log(`[API] POST /api/specs/${id} - Stored data:`, JSON.stringify(row, null, 2));
+  res.status(201).json({ id, link: `/api/specs/${id}`, ...req.body });
 });
 
 r.get("/:id", (req, res) => {
-  const row = DB.get(String(req.params.id));
-  if (!row) return res.status(404).json({ message: "Not Found" });
+  const id = String(req.params.id);
+  console.log(`[API] GET /api/specs/${id} - Retrieving data`);
+  
+  const row = DB.get(id);
+  if (!row) {
+    console.log(`[API] GET /api/specs/${id} - Not found`);
+    return res.status(404).json({ message: "Not Found" });
+  }
+  
+  console.log(`[API] GET /api/specs/${id} - Found data:`, JSON.stringify(row, null, 2));
   res.json(row);
 });
 
