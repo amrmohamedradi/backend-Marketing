@@ -32,7 +32,7 @@ app.use(cors({
     return cb(new Error("Not allowed by CORS"));
   },
   methods: ["GET","POST","PUT","PATCH","DELETE","OPTIONS"],
-  allowedHeaders: ["Content-Type","Authorization"],
+  // REMOVE allowedHeaders so cors echoes Access-Control-Request-Headers automatically
   credentials: false, // set to true only if you send cookies
 }));
 
