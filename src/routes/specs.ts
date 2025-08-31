@@ -8,31 +8,31 @@ let seq = 1;
 
 // Create with auto id
 r.post("/", (req, res) => {
-  const services = normalizeServices((req.body ?? {}).services ?? []);
+  const { client = {}, services = [] } = req.body ?? {};
   const id = String(seq++);
-  const row = { id, services };
+  const row = { id, client, services: normalizeServices(services) };
   DB.set(id, row);
-  res.status(201).json({ id, link: `/api/specs/${id}`, services });
+  res.status(201).json({ id, client: row.client, services: row.services, link: `/api/specs/${id}` });
 });
 
 // ✅ UPSERT: create if missing, update if exists
 r.put("/:id", (req, res) => {
   const id = String(req.params.id);
-  const services = normalizeServices((req.body ?? {}).services ?? []);
+  const { client = {}, services = [] } = req.body ?? {};
   const existed = DB.has(id);
-  const row = { id, services };
+  const row = { id, client, services: normalizeServices(services) };
   DB.set(id, row);
-  res.status(existed ? 200 : 201).json({ id, link: `/api/specs/${id}`, services });
+  res.status(existed ? 200 : 201).json({ id, client: row.client, services: row.services, link: `/api/specs/${id}` });
 });
 
 // (compat) allow POST /:id if FE still uses it
 r.post("/:id", (req, res) => {
   const id = String(req.params.id);
   if (DB.has(id)) return res.status(409).json({ message: "ID already exists" });
-  const services = normalizeServices((req.body ?? {}).services ?? []);
-  const row = { id, services };
+  const { client = {}, services = [] } = req.body ?? {};
+  const row = { id, client, services: normalizeServices(services) };
   DB.set(id, row);
-  res.status(201).json({ id, link: `/api/specs/${id}`, services });
+  res.status(201).json({ id, client: row.client, services: row.services, link: `/api/specs/${id}` });
 });
 
 r.get("/:id", (req, res) => {
